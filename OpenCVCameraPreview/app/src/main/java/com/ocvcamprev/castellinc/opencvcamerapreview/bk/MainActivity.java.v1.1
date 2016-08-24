@@ -1,0 +1,165 @@
+package com.ocvcamprev.castellinc.opencvcamerapreview;
+
+import android.app.Activity;
+import android.content.Context;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.Display;
+import android.view.SurfaceView;
+import android.view.WindowManager;
+
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.CameraBridgeViewBase;
+import org.opencv.android.JavaCameraView;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.imgproc.Imgproc;
+
+public class MainActivity extends Activity implements CameraBridgeViewBase.CvCameraViewListener2 {
+
+    private final static String TAG = "OpenCV:MainActivity";
+    private JavaCameraView mOpenCVCameraView;
+    private Mat mRgba;
+    private Mat mGray;
+
+    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS: {
+                    Log.i(TAG, "OpenCV loaded successfully");
+                    mOpenCVCameraView.enableView();
+                } break;
+                default: {
+                    super.onManagerConnected(status);
+                } break;
+            }
+        }
+    };
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        Log.i(TAG, "called onCreate");
+        super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        setContentView(R.layout.activity_main);
+        //Bind widget
+        mOpenCVCameraView = (JavaCameraView) findViewById(R.id.MainActivityCameraView);
+        mOpenCVCameraView.setVisibility(SurfaceView.VISIBLE);
+        mOpenCVCameraView.setCameraIndex(1);
+        mOpenCVCameraView.setCvCameraViewListener(this);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
+    }
+
+    @Override
+    public void onPause(){
+        super.onPause();
+        if (mOpenCVCameraView != null)
+            mOpenCVCameraView.disableView();
+    }
+
+    public void onDestroy() {
+        super.onDestroy();
+        if (mOpenCVCameraView != null)
+            mOpenCVCameraView.disableView();
+    }
+
+    @Override
+    public void onCameraViewStarted(int width, int height) {
+        mRgba = new Mat();
+        mGray = new Mat();
+
+    }
+
+    @Override
+    public void onCameraViewStopped() {
+        mGray.release();
+        mRgba.release();
+
+    }
+
+    @Override
+    public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
+
+        /*Mat cameraFram=inputFrame.rgba();
+        double [] pixelValue=cameraFram.get(0, 0);
+        double redChannelValue=pixelValue[0];
+        double greenChannelValue=pixelValue[1];
+        double blueChannelValue=pixelValue[2];
+        Log.i(TAG, "red channel value: "+redChannelValue);
+        Log.i(TAG, "green channel value: "+greenChannelValue);
+        Log.i(TAG, "blue channel value: "+blueChannelValue);
+        return inputFrame.rgba();*/
+        //Flip	around	the	Y	axis
+        Core.flip(inputFrame.rgba(),mRgba,1);
+        Core.flip(inputFrame.gray(),mGray,1);
+        /*if	(mAbsoluteFaceSize	==	0)	{
+            int	height	=	mGray.rows();
+            if	(Math.round(height	*	mRelativeFaceSize)	>	0)	{
+                mAbsoluteFaceSize	=	Math.round(height	*	mRelativeFaceSize);
+            }
+        }
+        MatOfRect	closedHands	=	new	MatOfRect();
+        if	(cascadeClassifier	!=	null)
+            cascadeClassifier.detectMultiScale(mGray,	closedHands,	1.1,	2,	2,new
+                    Size(mAbsoluteFaceSize,	mAbsoluteFaceSize),	new	Size());
+        Rect[]	facesArray	=	closedHands.toArray();
+        for	(int	i	=	0;	i	<	facesArray.length;	i++)
+        {
+            Core.rectangle(mRgba,	facesArray[i].tl(),	facesArray[i].br(),
+                    HAND_RECT_COLOR,	3);				Point	quatnizedTL=new	Point(((int)(facesArray[i].tl().x/100))*100,
+                ((int)(facesArray[i].tl().y/100))*100);
+
+            Point	quatnizedBR=new	Point(((int)(facesArray[i].br().x/100))*100,
+                    ((int)(facesArray[i].br().y/100))*100);
+
+            int	bucktID=quatnizedTL.hashCode()+quatnizedBR.hashCode()*2;
+            if(rectBuckts.containsKey(bucktID))
+            {
+                rectBuckts.put(bucktID,	rectBuckts.get(bucktID)+1);
+                rectCue.put(bucktID,	new	Rect(quatnizedTL,quatnizedBR));
+            }
+            else
+            {
+                rectBuckts.put(bucktID,	1);
+            }
+        }
+        int	maxDetections=0;
+        int	maxDetectionsKey=0;
+        for(Entry<Integer,Integer>	e	:	rectBuckts.entrySet())
+        {
+            if(e.getValue()>maxDetections)
+            {
+                maxDetections=e.getValue();
+                maxDetectionsKey=e.getKey();
+            }
+        }
+        if(maxDetections>5)
+        {
+            Core.rectangle(mRgba,	rectCue.get(maxDetectionsKey).tl(),
+                    rectCue.get(maxDetectionsKey).br(),	CUE_RECT_COLOR,	3);
+            SimpleDateFormat	sdf	=	new	SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
+            String	currentDateandTime	=	sdf.format(new	Date());
+            String	fileName	=	Environment.getExternalStorageDirectory().getPath()	+
+                    "/sample_picture_"	+	currentDateandTime	+	".jpg";
+
+            mOpenCvCameraView.takePicture(fileName);
+            Message	msg	=	handler.obtainMessage();
+            msg.arg1	=	1;
+            Bundle	b=new	Bundle();
+            b.putString("msg",	fileName	+	"	saved");
+            msg.setData(b);
+            handler.sendMessage(msg);
+            rectBuckts.clear();
+        }*/
+        return	mRgba;
+        //return	mGray;
+    }
+}

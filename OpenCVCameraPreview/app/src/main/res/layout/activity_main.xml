@@ -8,6 +8,19 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:visibility="gone"
-    android:id="@+id/MainActivityCameraView"
-    opencv:show_fps="true"  opencv:camera_id="any" />
+    android:id="@+id/BackCameraView"
+    opencv:show_fps="true"
+        opencv:camera_id="back" />
+    <!--opencv:camera_id="front" /> -->
+    <!--opencv:camera_id="back" /> -->
+    <!--opencv:camera_id="any" /> -->
+
+    <ImageButton
+        android:id="@+id/imageButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right|center"
+        android:background="@android:drawable/ic_menu_close_clear_cancel"
+        android:padding="20dp"
+        />
 </FrameLayout>
